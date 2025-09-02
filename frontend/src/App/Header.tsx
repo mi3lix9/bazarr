@@ -5,10 +5,14 @@ import {
   Avatar,
   Badge,
   Burger,
+  Card,
   Divider,
   Drawer,
   Group,
+  Loader,
   Menu,
+  Stack,
+  Text,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { faBell } from "@fortawesome/free-regular-svg-icons/faBell";
@@ -114,26 +118,91 @@ const AppHeader: FunctionComponent = () => {
       <Drawer
         opened={notificationsOpened}
         onClose={closeNotifications}
-        title="System Jobs"
+        title="Jobs Drawer"
         position="right"
         size="md"
         overlayProps={{ opacity: 0.35, blur: 2 }}
       >
-        {jobsLoading && <div>Loading jobs…</div>}
-        {!jobsLoading && jobsError && <div>Failed to load jobs.</div>}
-        {!jobsLoading && !jobsError && (
-          <div>
-            {!jobs || (Array.isArray(jobs) && jobs.length === 0) ? (
-              <p>No jobs.</p>
-            ) : (
-              <pre style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+        {jobsLoading && (
+          <Group justify="center" p="md">
+            <Loader size="sm" />
+            <Text size="sm">Loading jobs…</Text>
+          </Group>
+        )}
+
+        {!jobsLoading && jobsError && (
+          <Card withBorder padding="md" radius="sm">
+            <Text c="red.6" size="sm">
+              Failed to load jobs.
+            </Text>
+          </Card>
+        )}
+
+        {!jobsLoading &&
+          !jobsError &&
+          (Array.isArray(jobs) ? (
+            <Stack gap="sm">
+              {jobs.length === 0 && (
+                <Card withBorder padding="md" radius="sm">
+                  <Text size="sm" c="dimmed">
+                    No jobs.
+                  </Text>
+                </Card>
+              )}
+
+              {jobs.map((job, idx: number) => {
+                const status = job?.status;
+
+                return (
+                  <Card
+                    key={job?.job_id ?? job?.job_name + idx}
+                    withBorder
+                    radius="sm"
+                    padding="md"
+                  >
+                    <Group
+                      justify="space-between"
+                      align="center"
+                      mb="xs"
+                      wrap="nowrap"
+                    >
+                      <Text>{job?.job_name}</Text>
+                      <Badge
+                        variant={status === "running" ? "filled" : "light"}
+                        color={
+                          status === "pending"
+                            ? "blue"
+                            : status === "running"
+                              ? "green"
+                              : status === "failed"
+                                ? "red"
+                                : status === "completed"
+                                  ? "grey"
+                                  : "toto"
+                        }
+                      >
+                        {String(status)}
+                      </Badge>
+                    </Group>
+                  </Card>
+                );
+              })}
+            </Stack>
+          ) : (
+            <Card withBorder padding="md" radius="sm">
+              <Text size="sm" c="dimmed" mb="xs">
+                Jobs
+              </Text>
+              <Text
+                size="xs"
+                style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}
+              >
                 {typeof jobs === "string"
                   ? jobs
                   : JSON.stringify(jobs, null, 2)}
-              </pre>
-            )}
-          </div>
-        )}
+              </Text>
+            </Card>
+          ))}
       </Drawer>
     </AppShell.Header>
   );

@@ -1,4 +1,4 @@
-import { FunctionComponent, JSX } from "react";
+import { FunctionComponent } from "react";
 import TimeAgo from "react-timeago";
 import {
   Anchor,
@@ -149,7 +149,7 @@ const AppHeader: FunctionComponent = () => {
           (Array.isArray(jobs) ? (
             <>
               {jobs.length > 0 &&
-                ((): JSX.Element[] => {
+                (() => {
                   const grouped = (jobs as Jobs[]).reduce<
                     Record<string, Jobs[]>
                   >((acc, job) => {

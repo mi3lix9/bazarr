@@ -48,7 +48,7 @@ class SystemJobs(Resource):
         args = self.delete_request_parser.parse_args()
         job_id = args.get('id')
         if job_id:
-            deleted = jobs_queue.remove_job_from_pending_queue(task_id=job_id)
+            deleted = jobs_queue.remove_job_from_pending_queue(job_id=job_id)
             if deleted:
                 return '', 204
         return 'Job ID not provided', 400

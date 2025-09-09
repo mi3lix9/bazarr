@@ -131,7 +131,7 @@ class JobsQueue:
                 progress_max=progress_max,)
         )
         logging.debug(f"Task {job_name} ({new_job_id}) added to queue")
-        event_stream(type='jobs', action='update', payload=new_job_id)
+        event_stream(type='jobs', action='update', payload={"job_id": new_job_id, "job_value": None})
 
         return new_job_id
 
@@ -197,7 +197,8 @@ class JobsQueue:
                     job.progress_max = progress_max
                 if progress_message:
                     job.progress_message = progress_message
-                event_stream(type='jobs', action='update', payload=job.job_id)
+                event_stream(type='jobs', action='update', payload={"job_id": job.job_id,
+                                                                    "job_value": job.progress_value})
                 return True
         return False
 
@@ -225,7 +226,7 @@ class JobsQueue:
                     return False
                 else:
                     logging.debug(f"Task {job.job_name} ({job.job_id}) removed from queue")
-                    event_stream(type='jobs', action='delete', payload=job.job_id)
+                    event_stream(type='jobs', action='delete', payload={"job_id": job.job_id, "job_value": None})
                     return True
         return False
 
@@ -256,6 +257,8 @@ class JobsQueue:
                         job.status = 'running'
                         job.last_run_time = datetime.now()
                         self.jobs_running_queue.append(job)
+                        # sending event to update status of progress jobs
+                        event_stream(type='jobs', action='update', payload={"job_id": job.job_id, "job_value": None})
                         logging.debug(f"Running job {job.job_name} (id {job.job_id}): "
                                       f"{job.module}.{job.func}({job.args}, {job.kwargs})")
                         func_to_call = getattr(importlib.import_module(job.module), job.func)
@@ -266,7 +269,7 @@ class JobsQueue:
                         job.last_run_time = datetime.now()
                         self.jobs_failed_queue.append(job)
                     else:
-                        event_stream(type='jobs', action='update', payload=job.job_id)
+                        event_stream(type='jobs', action='update', payload={"job_id": job.job_id, "job_value": None})
                         job.status = 'completed'
                         job.last_run_time = datetime.now()
                         self.jobs_completed_queue.append(job)

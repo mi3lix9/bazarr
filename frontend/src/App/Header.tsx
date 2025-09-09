@@ -248,7 +248,8 @@ const AppHeader: FunctionComponent = () => {
                                     />
                                     <Text>
                                       {job.progress_message}{" "}
-                                      {job.progress_value}/{job.progress_max}
+                                      {job.progress_value} out of{" "}
+                                      {job.progress_max}
                                     </Text>
                                   </Grid.Col>
                                 )}

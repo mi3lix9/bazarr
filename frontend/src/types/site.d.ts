@@ -7,6 +7,13 @@ declare namespace Server {
   }
 }
 
+declare namespace Manager {
+  interface Jobs {
+    job_id: number;
+    job_value: number;
+  }
+}
+
 declare namespace Site {
   type Status = "uninitialized" | "unauthenticated" | "initialized" | "error";
   interface Progress {

@@ -216,19 +216,53 @@ export function createDefaultReducer(): SocketIO.Reducer[] {
     },
     {
       key: "jobs",
-      update: (ids) => {
-        ids.forEach((id) => {
-          // Update only the specified job id in the jobs list cache
-          LOG("info", "Updating single job (partial)", id);
-          const idNum = id as number;
+      update: (items) => {
+        items.forEach((payload) => {
+          // Payload is always a JSON string: {"job_id": <number>, "job_value": <number|null>}
+          // If job_value is present (not null/undefined), apply directly to cache without API call
+          if (payload.job_value !== null && payload.job_value !== undefined) {
+            const key = [QueryKeys.System, QueryKeys.Jobs] as const;
+            const current = queryClient.getQueryData<LooseObject[]>(key) || [];
+            const idx = current.findIndex((j) => j.job_id === payload.job_id);
 
-          if (Number.isNaN(idNum)) {
-            LOG("warning", "Invalid job id in SocketIO payload", id);
+            let updatedJob: LooseObject =
+              // eslint-disable-next-line camelcase
+              idx >= 0 ? { ...current[idx] } : { job_id: payload.job_id };
+
+            if (payload.job_value && typeof payload.job_value === "object") {
+              // Merge provided fields directly (expected to include progress fields)
+              updatedJob = {
+                ...updatedJob,
+                ...(payload.job_value as LooseObject),
+              };
+            } else {
+              // Fallback: treat primitive as progress_value
+              // eslint-disable-next-line camelcase
+              updatedJob = { ...updatedJob, progress_value: payload.job_value };
+            }
+
+            const next =
+              idx >= 0
+                ? [
+                    ...current.slice(0, idx),
+                    updatedJob,
+                    ...current.slice(idx + 1),
+                  ]
+                : [...current, updatedJob];
+
+            queryClient.setQueryData(key, next);
+            LOG("info", "Applied inline job_value to cache", payload.job_id);
             return;
           }
 
+          // job_value is null/undefined -> refresh this job via API
+          LOG(
+            "info",
+            "job_value missing; fetching job from API",
+            payload.job_id,
+          );
           void api.system
-            .jobs(idNum)
+            .jobs(payload.job_id)
             .then((resp: LooseObject[] | undefined) => {
               const incomingJobs = Array.isArray(resp) ? resp : [];
               if (incomingJobs.length === 0) {
@@ -255,7 +289,7 @@ export function createDefaultReducer(): SocketIO.Reducer[] {
               queryClient.setQueryData(key, next);
             })
             .catch((e: unknown) => {
-              LOG("warning", "Failed to fetch job update", id, e);
+              LOG("warning", "Failed to fetch job update", payload.job_id, e);
             });
         });
       },

@@ -23,6 +23,7 @@ import {
   faArrowRotateLeft,
   faGear,
   faPowerOff,
+  faTrash,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useSystem, useSystemJobs, useSystemSettings } from "@/apis/hooks";
@@ -32,7 +33,6 @@ import { useIsOnline } from "@/contexts/Online";
 import { Environment, useGotoHomepage } from "@/utilities";
 import styles from "./Header.module.scss";
 import Jobs = System.Jobs;
-import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { QueryKeys } from "@/apis/queries/keys";
 import api from "@/apis/raw";
@@ -215,7 +215,7 @@ const AppHeader: FunctionComponent = () => {
                                   <Badge size="sm">
                                     <TimeAgo
                                       date={job?.last_run_time}
-                                      minPeriod={60}
+                                      minPeriod={5}
                                     />
                                   </Badge>
                                   {status === "pending" && (
@@ -225,9 +225,8 @@ const AppHeader: FunctionComponent = () => {
                                         position: "left",
                                         openDelay: 500,
                                       }}
-                                      icon={faXmark}
-                                      size="sm"
-                                      c={"red"}
+                                      icon={faTrash}
+                                      size="md"
                                       loading={isCancelling}
                                       onClick={() =>
                                         job?.job_id && deleteJob(job.job_id)

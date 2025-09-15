@@ -227,13 +227,13 @@ export function createDefaultReducer(): SocketIO.Reducer[] {
             const current = queryClient.getQueryData<LooseObject[]>(keys) || [];
             const idx = current.findIndex((j) => j.job_id === payload.job_id);
 
-            // eslint-disable-next-line camelcase
             const initialJob =
+              // eslint-disable-next-line camelcase
               idx >= 0 ? { ...current[idx] } : { job_id: payload.job_id };
 
-            // eslint-disable-next-line camelcase
             const updatedJob = {
               ...initialJob,
+              // eslint-disable-next-line camelcase
               progress_value: payload.job_value,
             };
 

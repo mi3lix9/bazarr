@@ -2,6 +2,9 @@
 
 import logging
 import importlib
+import inspect
+import os
+import time
 
 from time import sleep
 from datetime import datetime
@@ -207,9 +210,63 @@ class JobsQueue:
                 if progress_message:
                     job.progress_message = progress_message
                 event_stream(type='jobs', action='update', payload={"job_id": job.job_id,
-                                                                    "job_value": job.progress_value})
+                                                                    "progress_value": job.progress_value,
+                                                                    "progress_max": job.progress_max,})
                 return True
         return False
+
+    def add_progress_job_from_function(self, job_name: str, progress_max: int = 0,):
+        """
+        Adds a progress tracking job from the context of the calling function. This function
+        inspects the calling function's metadata, including its name, file path, and arguments,
+        to create and enqueue a progress job. The job remains in a pending or running state
+        while being processed and waits for its completion or failure.
+
+        :param job_name: The name of the job to be added.
+        :type job_name: str
+        :param progress_max: The maximum progress value for the job. Defaults to 0.
+        :type progress_max: int
+        :return: The unique job identifier of the added progress job.
+        :rtype: str
+        """
+        # Get the current frame
+        current_frame = inspect.currentframe()
+
+        # Get the frame of the caller (parent function)
+        # The caller's frame is at index 1 in the stack
+        caller_frame = current_frame.f_back
+
+        # Get the code object of the caller
+        caller_code = caller_frame.f_code
+
+        # Get the name of the parent function
+        parent_function_name = caller_code.co_name
+
+        # Get the file path of the parent function
+        relative_parent_function_path = os.path.relpath(caller_code.co_filename)
+        parent_function_path = os.path.splitext(relative_parent_function_path)[0].replace(os.sep, '.')
+
+        # Get the function signature of the caller
+        caller_signature = inspect.signature(inspect.getmodule(caller_code).__dict__[caller_code.co_name])
+        # Get the local variables within the caller's frame
+        caller_locals = caller_frame.f_locals
+
+        bound_arguments = caller_signature.bind(**caller_locals)
+        arguments = bound_arguments.arguments
+
+        # Clean up the frame objects to prevent reference cycles
+        del current_frame, caller_frame, caller_code, caller_signature, caller_locals, bound_arguments
+
+        # Feed the job to the pending queue
+        job_id = self.feed_jobs_pending_queue(job_name=job_name, module=parent_function_path,
+                                              func=parent_function_name, kwargs=arguments,
+                                              is_progress=True, progress_max=progress_max)
+
+        # Wait for the job to complete or fail
+        while jobs_queue.get_job_status(job_id=job_id) in ['pending', 'running']:
+            time.sleep(1)
+
+        return job_id
 
     def remove_job_from_pending_queue(self, job_id: int):
         """
@@ -265,13 +322,14 @@ class JobsQueue:
                     try:
                         job.status = 'running'
                         job.last_run_time = datetime.now()
+                        if not 'job_id' in job.kwargs or not job.kwargs['job_id']:
+                            job.kwargs['job_id'] = job.job_id
                         self.jobs_running_queue.append(job)
                         # sending event to update status of progress jobs
                         event_stream(type='jobs', action='update', payload={"job_id": job.job_id, "job_value": None})
                         logging.debug(f"Running job {job.job_name} (id {job.job_id}): "
                                       f"{job.module}.{job.func}({job.args}, {job.kwargs})")
-                        func_to_call = getattr(importlib.import_module(job.module), job.func)
-                        func_to_call(*job.args, **job.kwargs, job_id=job.job_id)
+                        getattr(importlib.import_module(job.module), job.func)(*job.args, **job.kwargs)
                     except Exception as e:
                         logging.exception(f"Exception raised while running function: {e}")
                         job.status = 'failed'

@@ -2,7 +2,6 @@
 
 import os
 import logging
-import time
 from constants import MINIMUM_VIDEO_SIZE
 
 from sqlalchemy.exc import IntegrityError
@@ -40,14 +39,7 @@ def get_episodes_monitored_table(series_id):
     return episode_dict
 
 
-def update_all_episodes():
-    job_id = jobs_queue.feed_jobs_pending_queue("Full disk scan for episodes subtitles", "subtitles.indexer.series",
-                                                "series_full_scan_subtitles", is_progress=True)
-    while jobs_queue.get_job_status(job_id=job_id) in ['pending', 'running']:
-        time.sleep(1)
-
-
-def sync_episodes(series_id, send_event=True, defer_search=False, **kwargs):
+def sync_episodes(series_id, defer_search=False):
     logging.debug(f'BAZARR Starting episodes sync from Sonarr for series ID {series_id}.')
     apikey_sonarr = settings.sonarr.apikey
 
@@ -147,8 +139,7 @@ def sync_episodes(series_id, send_event=True, defer_search=False, **kwargs):
             logging.error(f"BAZARR cannot delete episodes because of {e}")
         else:
             for removed_episode in episodes_to_delete:
-                if send_event:
-                    event_stream(type='episode', action='delete', payload=removed_episode)
+                event_stream(type='episode', action='delete', payload=removed_episode)
 
     # Insert new episodes in DB
     if len(episodes_to_add):
@@ -162,9 +153,7 @@ def sync_episodes(series_id, send_event=True, defer_search=False, **kwargs):
                 episodes_to_update.append(added_episode)
             else:
                 store_subtitles(added_episode['path'], path_mappings.path_replace(added_episode['path']))
-
-                if send_event:
-                    event_stream(type='episode', payload=added_episode['sonarrEpisodeId'])
+                event_stream(type='episode', payload=added_episode['sonarrEpisodeId'])
 
     # Update existing episodes in DB
     if len(episodes_to_update):
@@ -178,9 +167,7 @@ def sync_episodes(series_id, send_event=True, defer_search=False, **kwargs):
                 logging.error(f"BAZARR cannot update episodes because of {e}")
             else:
                 store_subtitles(updated_episode['path'], path_mappings.path_replace(updated_episode['path']))
-
-                if send_event:
-                    event_stream(type='episode', action='update', payload=updated_episode['sonarrEpisodeId'])
+                event_stream(type='episode', action='update', payload=updated_episode['sonarrEpisodeId'])
 
     # Downloading missing subtitles
     for episode in episodes_to_add + episodes_to_update:

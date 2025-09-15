@@ -285,6 +285,10 @@ def list_missing_subtitles(no=None, epno=None, send_event=True):
 
 
 def series_full_scan_subtitles(job_id=None, use_cache=None):
+    if not job_id:
+        jobs_queue.add_progress_job_from_function("Full disk scan for episodes subtitles")
+        return
+
     if use_cache is None:
         use_cache = settings.sonarr.use_ffprobe_cache
 
@@ -292,11 +296,9 @@ def series_full_scan_subtitles(job_id=None, use_cache=None):
         select(TableEpisodes.path))\
         .all()
 
-    if job_id:
-        jobs_queue.update_job_progress(job_id=job_id, progress_max=len(episodes), progress_message='Indexing')
+    jobs_queue.update_job_progress(job_id=job_id, progress_max=len(episodes), progress_message='Indexing')
     for i, episode in enumerate(episodes, start=1):
-        if job_id:
-            jobs_queue.update_job_progress(job_id=job_id, progress_value=i)
+        jobs_queue.update_job_progress(job_id=job_id, progress_value=i)
         store_subtitles(episode.path, path_mappings.path_replace(episode.path), use_cache=use_cache)
 
     logging.info('BAZARR All existing episode subtitles indexed from disk.')

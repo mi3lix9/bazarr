@@ -4,6 +4,7 @@ import gc
 import os
 import logging
 import ast
+import time
 
 from subliminal_patch import core, search_external_subtitles
 
@@ -279,6 +280,10 @@ def list_missing_subtitles_movies(no=None, send_event=True):
 
 
 def movies_full_scan_subtitles(job_id=None, use_cache=None):
+    if not job_id:
+        jobs_queue.add_progress_job_from_function("Full disk scan for movies subtitles")
+        return
+
     if use_cache is None:
         use_cache = settings.radarr.use_ffprobe_cache
 
@@ -286,11 +291,9 @@ def movies_full_scan_subtitles(job_id=None, use_cache=None):
         select(TableMovies.path))\
         .all()
 
-    if job_id:
-        jobs_queue.update_job_progress(job_id=job_id, progress_max=len(movies), progress_message='Indexing')
+    jobs_queue.update_job_progress(job_id=job_id, progress_max=len(movies), progress_message='Indexing')
     for i, movie in enumerate(movies, start=1):
-        if job_id:
-            jobs_queue.update_job_progress(job_id=job_id, progress_value=i)
+        jobs_queue.update_job_progress(job_id=job_id, progress_value=i)
         store_subtitles_movie(movie.path, path_mappings.path_replace_movie(movie.path), use_cache=use_cache)
 
     logging.info('BAZARR All existing movie subtitles indexed from disk.')

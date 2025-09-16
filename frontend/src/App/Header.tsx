@@ -98,10 +98,10 @@ const AppHeader: FunctionComponent = () => {
             label="Jobs Manager"
             tooltip={{ position: "left", openDelay: 2000 }}
             icon={faBell}
-            size="lg"
-            // loading={Boolean(
-            //   jobs?.filter((job) => job.status === "running").length,
-            // )}
+            size="sm"
+            isLoading={Boolean(
+              jobs?.filter((job) => job.status === "running").length,
+            )}
             onClick={openJobsManager}
           ></Action>
           <Menu>

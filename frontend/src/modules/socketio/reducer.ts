@@ -3,7 +3,7 @@ import { isArray, isEmpty, isNumber } from "lodash";
 import queryClient from "@/apis/queries";
 import { QueryKeys } from "@/apis/queries/keys";
 import api from "@/apis/raw";
-import { notification, task } from "@/modules/task";
+import { notification } from "@/modules/task";
 import { LOG } from "@/utilities/console";
 import { setCriticalError, setOnlineStatus } from "@/utilities/event";
 
@@ -31,11 +31,6 @@ export function createDefaultReducer(): SocketIO.Reducer[] {
           .map((message) => notification.info("Notification", message))
           .forEach((data) => showNotification(data));
       },
-    },
-    {
-      key: "progress",
-      update: task.updateProgress.bind(task),
-      delete: task.removeProgress.bind(task),
     },
     {
       key: "series",
@@ -221,8 +216,8 @@ export function createDefaultReducer(): SocketIO.Reducer[] {
         const keys = [QueryKeys.System, QueryKeys.Jobs];
 
         items.forEach((payload) => {
-          // Payload is always a JSON string: {"job_id": <number>, "job_value": <number|null>}
-          // If job_value is present (not null/undefined), apply directly to cache without API call
+          // Payload is always a JSON string: {"job_id": <number>, "job_value": <number|null>, "job_message": <string>}
+          // If job_value is present (not null/undefined), apply (with job_message) directly to cache without API call
           if (isNumber(payload.job_value)) {
             const current = queryClient.getQueryData<LooseObject[]>(keys) || [];
             const idx = current.findIndex((j) => j.job_id === payload.job_id);
@@ -235,6 +230,8 @@ export function createDefaultReducer(): SocketIO.Reducer[] {
               ...initialJob,
               // eslint-disable-next-line camelcase
               progress_value: payload.job_value,
+              // eslint-disable-next-line camelcase
+              progress_message: payload.job_message,
             };
 
             const next =
@@ -247,7 +244,11 @@ export function createDefaultReducer(): SocketIO.Reducer[] {
                 : [...current, updatedJob];
 
             queryClient.setQueryData(keys, next);
-            LOG("info", "Applied inline job_value to cache", payload.job_id);
+            LOG(
+              "info",
+              "Applied inline job_value and job_message to cache",
+              payload.job_id,
+            );
             return;
           }
 

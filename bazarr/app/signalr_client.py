@@ -73,7 +73,7 @@ class SonarrSignalrClientLegacy:
                     event_stream(type='badges')
                     logging.info('BAZARR SignalR client for Sonarr is connected and waiting for events.')
                     if not args.dev:
-                        scheduler.add_job(update_series, kwargs={'send_event': True}, max_instances=1)
+                        update_series()
 
     def stop(self, log=True):
         try:
@@ -149,7 +149,7 @@ class SonarrSignalrClient:
         event_stream(type='badges')
         logging.info('BAZARR SignalR client for Sonarr is connected and waiting for events.')
         if not args.dev:
-            scheduler.add_job(update_series, kwargs={'send_event': True}, max_instances=1)
+            update_series()
 
     def on_reconnect_handler(self):
         self.connected = False
@@ -216,7 +216,7 @@ class RadarrSignalrClient:
         event_stream(type='badges')
         logging.info('BAZARR SignalR client for Radarr is connected and waiting for events.')
         if not args.dev:
-            scheduler.add_job(update_movies, kwargs={'send_event': True}, max_instances=1)
+            update_movies()
 
     def on_reconnect_handler(self):
         self.connected = False
@@ -306,7 +306,7 @@ def dispatcher(data):
                                                    'sonarr.sync.episodes',
                                                    'sync_episodes',
                                                    [],
-                                                   {'series_id': media_id, 'send_event': True,
+                                                   {'series_id': media_id,
                                                     'defer_search': settings.sonarr.defer_search_signalr})
         elif topic == 'episode':
             logging.debug(f'Event received from Sonarr for episode: {series_title} ({series_year}) - '

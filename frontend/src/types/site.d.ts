@@ -11,6 +11,7 @@ declare namespace Manager {
   interface Jobs {
     job_id: number;
     job_value: number;
+    job_message: string;
   }
 }
 

@@ -39,7 +39,8 @@ class ProcessSubtitlesResult:
             self.language_code = downloaded_language_code2
 
 
-def process_subtitle(subtitle, media_type, audio_language, path, max_score, is_upgrade=False, is_manual=False):
+def process_subtitle(subtitle, media_type, audio_language, path, max_score, is_upgrade=False, is_manual=False,
+                     job_id=None):
     use_postprocessing = settings.general.use_postprocessing
     postprocessing_cmd = settings.general.postprocessing_cmd
 
@@ -95,7 +96,8 @@ def process_subtitle(subtitle, media_type, audio_language, path, max_score, is_u
                            srt_lang=downloaded_language_code2,
                            percent_score=percent_score,
                            sonarr_series_id=episode_metadata.sonarrSeriesId,
-                           sonarr_episode_id=episode_metadata.sonarrEpisodeId)
+                           sonarr_episode_id=episode_metadata.sonarrEpisodeId,
+                           job_id=job_id)
     else:
         movie_metadata = database.execute(
             select(TableMovies.radarrId, TableMovies.imdbId)
@@ -113,7 +115,8 @@ def process_subtitle(subtitle, media_type, audio_language, path, max_score, is_u
                            hi=subtitle.language.hi,
                            srt_lang=downloaded_language_code2,
                            percent_score=percent_score,
-                           radarr_id=movie_metadata.radarrId)
+                           radarr_id=movie_metadata.radarrId,
+                           job_id=job_id)
 
     if use_postprocessing is True:
         command = pp_replace(postprocessing_cmd, path, downloaded_path, downloaded_language, downloaded_language_code2,

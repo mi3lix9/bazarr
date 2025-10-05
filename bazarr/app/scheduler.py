@@ -113,11 +113,6 @@ class Scheduler:
         if args.no_tasks:
             self.__no_task()
 
-    def add_job(self, job, name=None, max_instances=1, coalesce=True, args=None, kwargs=None):
-        self.aps_scheduler.add_job(
-            job, 'date', run_date=datetime.now(), name=name, id=name, max_instances=max_instances,
-            coalesce=coalesce, args=args, kwargs=kwargs)
-
     def execute_job_now(self, taskid):
         self.aps_scheduler.modify_job(taskid, next_run_time=datetime.now())
 

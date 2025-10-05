@@ -46,9 +46,11 @@ class Job:
     :type progress_max: int
     :ivar progress_message: Message shown for this job's progress, initialized to an empty string.
     :type progress_message: str
+    :ivar job_returned_value: Value returned by the job function, initialized to None.
+    :type job_returned_value: Any
     """
     def __init__(self, job_id: int, job_name: str, module: str, func: str, args: list = None, kwargs: dict = None,
-                 is_progress=False, progress_max: int = 0):
+                 is_progress=False, progress_max: int = 0, job_returned_value=None,):
         self.job_id = job_id
         self.job_name = job_name
         self.module = module
@@ -61,6 +63,7 @@ class Job:
         self.progress_value = 0
         self.progress_max = progress_max
         self.progress_message = ""
+        self.job_returned_value = job_returned_value
 
 
 class JobsQueue:
@@ -184,6 +187,26 @@ class JobsQueue:
         else:
             return "Unknown job"
 
+    def get_job_returned_value(self, job_id: int):
+        """
+        Fetches the returned value of a job from the queue provided its unique identifier.
+
+        This function retrieves the job details from the queue using the provided job
+        identifier. If the job exists and contains a 'job_returned_value' key, the
+        function returns the corresponding value. Otherwise, it defaults to returning
+        None.
+
+        :param job_id: The unique identifier of the job to fetch the returned value for.
+        :type job_id: int
+        :return: The returned value of the job if it exists, otherwise None.
+        :rtype: Any
+        """
+        job = self.list_jobs_from_queue(job_id=job_id)
+        if job and 'job_returned_value' in job[0]:
+            return job[0]['job_returned_value']
+        else:
+            return None
+
     def update_job_progress(self, job_id: int, progress_value=None, progress_max=None, progress_message: str = ""):
         """
         Updates the progress value and message for a specific job within the running jobs queue. The function
@@ -203,15 +226,19 @@ class JobsQueue:
         """
         for job in self.jobs_running_queue:
             if job.job_id == job_id:
+                payload = {"job_id": job.job_id}
                 if progress_value:
                     job.progress_value = progress_value
+                    payload["progress_value"] = job.progress_value
+                    payload["job_value"] = job.progress_value
+                    payload["job_message"] = job.progress_message
                 if progress_max:
                     job.progress_max = progress_max
+                    payload["progress_max"] = job.progress_max
                 if progress_message:
                     job.progress_message = progress_message
-                event_stream(type='jobs', action='update', payload={"job_id": job.job_id,
-                                                                    "progress_value": job.progress_value,
-                                                                    "progress_max": job.progress_max,})
+                    payload["progress_message"] = job.progress_message
+                event_stream(type='jobs', action='update', payload=payload)
                 return True
         return False
 
@@ -227,7 +254,7 @@ class JobsQueue:
         :param progress_max: The maximum progress value for the job. Defaults to 0.
         :type progress_max: int
         :return: The unique job identifier of the added progress job.
-        :rtype: str
+        :rtype: int
         """
         # Get the current frame
         current_frame = inspect.currentframe()
@@ -326,22 +353,26 @@ class JobsQueue:
                             job.kwargs['job_id'] = job.job_id
                         self.jobs_running_queue.append(job)
                         # sending event to update status of progress jobs
-                        event_stream(type='jobs', action='update', payload={"job_id": job.job_id, "job_value": None})
+                        event_stream(type='jobs', action='update',
+                                     payload={"job_id": job.job_id,
+                                              "job_value": job.progress_value if job.is_progress else None})
                         logging.debug(f"Running job {job.job_name} (id {job.job_id}): "
                                       f"{job.module}.{job.func}({job.args}, {job.kwargs})")
-                        getattr(importlib.import_module(job.module), job.func)(*job.args, **job.kwargs)
+                        job.job_returned_value = (getattr(importlib.import_module(job.module), job.func)
+                                                  (*job.args, **job.kwargs))
                     except Exception as e:
                         logging.exception(f"Exception raised while running function: {e}")
                         job.status = 'failed'
                         job.last_run_time = datetime.now()
                         self.jobs_failed_queue.append(job)
                     else:
-                        event_stream(type='jobs', action='update', payload={"job_id": job.job_id, "job_value": None})
                         job.status = 'completed'
                         job.last_run_time = datetime.now()
                         self.jobs_completed_queue.append(job)
                     finally:
                         self.jobs_running_queue.remove(job)
+                        event_stream(type='jobs', action='update', payload={"job_id": job.job_id, "job_value": None})
+                        # job_value being None force an API call to update the whole job payload.
             else:
                 sleep(0.1)
 

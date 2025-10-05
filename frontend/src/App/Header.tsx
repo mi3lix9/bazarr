@@ -9,13 +9,13 @@ import {
   Card,
   Divider,
   Drawer,
-  Grid,
   Group,
   Loader,
   Menu,
   Progress,
   Stack,
   Text,
+  Tooltip,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { faBell } from "@fortawesome/free-regular-svg-icons/faBell";
@@ -199,7 +199,7 @@ const AppHeader: FunctionComponent = () => {
                           </Text>
                         </Group>
 
-                        <Stack gap="xs">
+                        <Stack>
                           {grouped[status as string].map((job) => (
                             <Card
                               key={job?.job_id}
@@ -207,17 +207,8 @@ const AppHeader: FunctionComponent = () => {
                               radius="sm"
                               padding="sm"
                             >
-                              <Grid columns={12}>
-                                <Grid.Col span={8}>
-                                  <Text truncate="end">{job?.job_name}</Text>
-                                </Grid.Col>
-                                <Grid.Col span={4}>
-                                  <Badge size="sm">
-                                    <TimeAgo
-                                      date={job?.last_run_time}
-                                      minPeriod={5}
-                                    />
-                                  </Badge>
+                              <Group justify="space-between" wrap="nowrap">
+                                <Text truncate="end">
                                   {status === "pending" && (
                                     <Action
                                       label="Cancel job"
@@ -226,33 +217,45 @@ const AppHeader: FunctionComponent = () => {
                                         openDelay: 500,
                                       }}
                                       icon={faTrash}
-                                      size="md"
+                                      size="sm"
                                       loading={isCancelling}
                                       onClick={() =>
                                         job?.job_id && deleteJob(job.job_id)
                                       }
                                     />
                                   )}
-                                </Grid.Col>
-                                {job?.is_progress && (
-                                  <Grid.Col span={12}>
-                                    <Progress
-                                      value={
-                                        (job.progress_value /
-                                          job.progress_max) *
-                                        100
-                                      }
-                                      size="sm"
-                                      radius="sm"
-                                    />
+                                  {job?.job_name}
+                                </Text>
+                                <Badge size="sm">
+                                  <TimeAgo
+                                    date={job?.last_run_time}
+                                    minPeriod={5}
+                                  />
+                                </Badge>
+                              </Group>
+                              {job?.is_progress && (
+                                <>
+                                  <Progress
+                                    value={
+                                      (job.progress_value / job.progress_max) *
+                                      100
+                                    }
+                                    size="sm"
+                                    radius="sm"
+                                  />
+                                  <Group justify="space-between" wrap="nowrap">
+                                    <Tooltip label={job.progress_message}>
+                                      <Text truncate={"end"}>
+                                        {job.progress_message}
+                                      </Text>
+                                    </Tooltip>
                                     <Text>
-                                      {job.progress_message}{" "}
                                       {job.progress_value} out of{" "}
                                       {job.progress_max}
                                     </Text>
-                                  </Grid.Col>
-                                )}
-                              </Grid>
+                                  </Group>
+                                </>
+                              )}
                             </Card>
                           ))}
                         </Stack>

@@ -16,7 +16,7 @@ from app.config import settings
 from utilities.helper import get_subtitle_destination_folder
 from utilities.path_mappings import path_mappings
 from utilities.video_analyzer import embedded_subs_reader
-from app.event_handler import event_stream, show_progress, hide_progress
+from app.event_handler import event_stream
 from subtitles.indexer.utils import guess_external_subtitles, get_external_subtitles_path
 from app.jobs_queue import jobs_queue
 
@@ -153,7 +153,7 @@ def store_subtitles_movie(original_path, reversed_path, use_cache=True):
     return actual_subtitles
 
 
-def list_missing_subtitles_movies(no=None, send_event=True):
+def list_missing_subtitles_movies(no=None):
     stmt = select(TableMovies.radarrId,
                   TableMovies.subtitles,
                   TableMovies.profileId,
@@ -272,11 +272,9 @@ def list_missing_subtitles_movies(no=None, send_event=True):
             .values(missing_subtitles=missing_subtitles_text)
             .where(TableMovies.radarrId == movie_subtitles.radarrId))
 
-        if send_event:
-            event_stream(type='movie', payload=movie_subtitles.radarrId)
-            event_stream(type='movie-wanted', action='update', payload=movie_subtitles.radarrId)
-    if send_event:
-        event_stream(type='badges')
+        event_stream(type='movie', payload=movie_subtitles.radarrId)
+        event_stream(type='movie-wanted', action='update', payload=movie_subtitles.radarrId)
+    event_stream(type='badges')
 
 
 def movies_full_scan_subtitles(job_id=None, use_cache=None):
@@ -288,12 +286,12 @@ def movies_full_scan_subtitles(job_id=None, use_cache=None):
         use_cache = settings.radarr.use_ffprobe_cache
 
     movies = database.execute(
-        select(TableMovies.path))\
+        select(TableMovies.path, TableMovies.title))\
         .all()
 
     jobs_queue.update_job_progress(job_id=job_id, progress_max=len(movies), progress_message='Indexing')
     for i, movie in enumerate(movies, start=1):
-        jobs_queue.update_job_progress(job_id=job_id, progress_value=i)
+        jobs_queue.update_job_progress(job_id=job_id, progress_value=i, progress_message=movie.title)
         store_subtitles_movie(movie.path, path_mappings.path_replace_movie(movie.path), use_cache=use_cache)
 
     logging.info('BAZARR All existing movie subtitles indexed from disk.')

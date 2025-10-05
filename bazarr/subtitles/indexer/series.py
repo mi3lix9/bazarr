@@ -15,7 +15,7 @@ from app.config import settings
 from utilities.helper import get_subtitle_destination_folder
 from utilities.path_mappings import path_mappings
 from utilities.video_analyzer import embedded_subs_reader
-from app.event_handler import event_stream, show_progress, hide_progress
+from app.event_handler import event_stream
 from subtitles.indexer.utils import guess_external_subtitles, get_external_subtitles_path
 from app.jobs_queue import jobs_queue
 
@@ -151,7 +151,7 @@ def store_subtitles(original_path, reversed_path, use_cache=True):
     return actual_subtitles
 
 
-def list_missing_subtitles(no=None, epno=None, send_event=True):
+def list_missing_subtitles(no=None, epno=None):
     stmt = select(TableShows.sonarrSeriesId,
                   TableEpisodes.sonarrEpisodeId,
                   TableEpisodes.subtitles,
@@ -277,11 +277,9 @@ def list_missing_subtitles(no=None, epno=None, send_event=True):
             .values(missing_subtitles=missing_subtitles_text)
             .where(TableEpisodes.sonarrEpisodeId == episode_subtitles.sonarrEpisodeId))
 
-        if send_event:
-            event_stream(type='episode', payload=episode_subtitles.sonarrEpisodeId)
-            event_stream(type='episode-wanted', action='update', payload=episode_subtitles.sonarrEpisodeId)
-    if send_event:
-        event_stream(type='badges')
+        event_stream(type='episode', payload=episode_subtitles.sonarrEpisodeId)
+        event_stream(type='episode-wanted', action='update', payload=episode_subtitles.sonarrEpisodeId)
+    event_stream(type='badges')
 
 
 def series_full_scan_subtitles(job_id=None, use_cache=None):
@@ -293,12 +291,16 @@ def series_full_scan_subtitles(job_id=None, use_cache=None):
         use_cache = settings.sonarr.use_ffprobe_cache
 
     episodes = database.execute(
-        select(TableEpisodes.path))\
-        .all()
+        select(TableEpisodes.path, TableShows.title, TableEpisodes.title.label("episodeTitle"), TableEpisodes.season, TableEpisodes.episode)
+        .select_from(TableEpisodes)
+        .join(TableShows)
+    ).all()
 
     jobs_queue.update_job_progress(job_id=job_id, progress_max=len(episodes), progress_message='Indexing')
     for i, episode in enumerate(episodes, start=1):
-        jobs_queue.update_job_progress(job_id=job_id, progress_value=i)
+        jobs_queue.update_job_progress(
+            job_id=job_id, progress_value=i,
+            progress_message=f"{episode.title} - S{episode.season:02d}E{episode.episode:02d} - {episode.episodeTitle}")
         store_subtitles(episode.path, path_mappings.path_replace(episode.path), use_cache=use_cache)
 
     logging.info('BAZARR All existing episode subtitles indexed from disk.')

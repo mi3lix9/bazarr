@@ -10,7 +10,7 @@ from subtitles.indexer.series import list_missing_subtitles
 from sonarr.rootfolder import check_sonarr_rootfolder
 from app.database import TableShows, TableLanguagesProfiles, database, insert, update, delete, select
 from utilities.path_mappings import path_mappings
-from app.event_handler import event_stream, show_progress, hide_progress
+from app.event_handler import event_stream
 from app.jobs_queue import jobs_queue
 
 from .episodes import sync_episodes

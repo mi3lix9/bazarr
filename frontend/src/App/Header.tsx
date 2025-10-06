@@ -200,64 +200,78 @@ const AppHeader: FunctionComponent = () => {
                         </Group>
 
                         <Stack>
-                          {grouped[status as string].map((job) => (
-                            <Card
-                              key={job?.job_id}
-                              withBorder
-                              radius="sm"
-                              padding="sm"
-                            >
-                              <Group justify="space-between" wrap="nowrap">
-                                <Text truncate="end">
-                                  {status === "pending" && (
-                                    <Action
-                                      label="Cancel job"
-                                      tooltip={{
-                                        position: "left",
-                                        openDelay: 500,
-                                      }}
-                                      icon={faTrash}
-                                      size="sm"
-                                      loading={isCancelling}
-                                      onClick={() =>
-                                        job?.job_id && deleteJob(job.job_id)
-                                      }
+                          {grouped[status as string]
+                            .sort((a, b) => {
+                              const timeA = new Date(
+                                a?.last_run_time || 0,
+                              ).getTime();
+                              const timeB = new Date(
+                                b?.last_run_time || 0,
+                              ).getTime();
+                              return timeB - timeA; // Latest first (descending order)
+                            })
+                            .map((job) => (
+                              <Card
+                                key={job?.job_id}
+                                withBorder
+                                radius="sm"
+                                padding="sm"
+                              >
+                                <Group justify="space-between" wrap="nowrap">
+                                  <Text truncate="end">
+                                    {status === "pending" && (
+                                      <Action
+                                        label="Cancel job"
+                                        tooltip={{
+                                          position: "left",
+                                          openDelay: 500,
+                                        }}
+                                        icon={faTrash}
+                                        size="sm"
+                                        loading={isCancelling}
+                                        onClick={() =>
+                                          job?.job_id && deleteJob(job.job_id)
+                                        }
+                                      />
+                                    )}
+                                    {job?.job_name}
+                                  </Text>
+                                  <Badge size="sm">
+                                    <TimeAgo
+                                      date={job?.last_run_time}
+                                      minPeriod={5}
                                     />
-                                  )}
-                                  {job?.job_name}
-                                </Text>
-                                <Badge size="sm">
-                                  <TimeAgo
-                                    date={job?.last_run_time}
-                                    minPeriod={5}
-                                  />
-                                </Badge>
-                              </Group>
-                              {job?.is_progress && (
-                                <>
-                                  <Progress
-                                    value={
-                                      (job.progress_value / job.progress_max) *
-                                      100
-                                    }
-                                    size="sm"
-                                    radius="sm"
-                                  />
-                                  <Group justify="space-between" wrap="nowrap">
-                                    <Tooltip label={job.progress_message}>
-                                      <Text truncate={"end"}>
-                                        {job.progress_message}
+                                  </Badge>
+                                </Group>
+                                {job?.is_progress && (
+                                  <>
+                                    <Progress
+                                      value={
+                                        (job.progress_value /
+                                          job.progress_max) *
+                                        100
+                                      }
+                                      size="sm"
+                                      radius="sm"
+                                    />
+                                    <Group
+                                      justify="space-between"
+                                      wrap="nowrap"
+                                    >
+                                      <Tooltip label={job.progress_message}>
+                                        <Text truncate={"end"}>
+                                          {job.progress_message}
+                                        </Text>
+                                      </Tooltip>
+                                      <Text>
+                                        {job.progress_value} out of{" "}
+                                        {job.progress_max}
                                       </Text>
-                                    </Tooltip>
-                                    <Text>
-                                      {job.progress_value} out of{" "}
-                                      {job.progress_max}
-                                    </Text>
-                                  </Group>
-                                </>
-                              )}
-                            </Card>
-                          ))}
+                                    </Group>
+                                  </>
+                                )}
+                              </Card>
+                            ))}
                         </Stack>
                       </Stack>
                     ));

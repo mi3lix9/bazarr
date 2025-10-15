@@ -39,7 +39,17 @@ def get_episodes_monitored_table(series_id):
     return episode_dict
 
 
-def sync_episodes(series_id, defer_search=False):
+def check_actual_file_size(original_episode_path):
+    try:
+        bazarr_file_size = \
+            os.path.getsize(path_mappings.path_replace(original_episode_path))
+    except OSError:
+        bazarr_file_size = 0
+
+    return bazarr_file_size > MINIMUM_VIDEO_SIZE
+
+
+def sync_episodes(series_id, defer_search=False, **kwargs):
     logging.debug(f'BAZARR Starting episodes sync from Sonarr for series ID {series_id}.')
     apikey_sonarr = settings.sonarr.apikey
 
@@ -81,45 +91,38 @@ def sync_episodes(series_id, defer_search=False):
             skipped_count = 0
 
         for episode in episodes:
-            if 'hasFile' in episode:
-                if episode['hasFile'] is True:
-                    if 'episodeFile' in episode:
-                        # monitored_status_db = get_episodes_monitored_status(episode['episodeFileId'])
-                        if sync_monitored:
-                            try:
-                                monitored_status_db = bool_map[episodes_monitored[episode['episodeFileId']]]
-                            except KeyError:
-                                monitored_status_db = None
+            if 'hasFile' in episode and episode['hasFile'] and 'episodeFile' in episode:
+                if sync_monitored:
+                    try:
+                        monitored_status_db = bool_map[episodes_monitored[episode['episodeFileId']]]
+                    except KeyError:
+                        monitored_status_db = None
 
-                            if monitored_status_db is None:
-                                # not in db, might need to add, if we have a file on disk
-                                pass
-                            elif monitored_status_db != episode['monitored']:
-                                # monitored status changed and we don't know about it until now
-                                trace(f"(Monitor Status Mismatch) {episode['title']}")
-                                # pass
-                            elif not episode['monitored']:
-                                # Add unmonitored episode in sonarr to current episode list, otherwise it will be deleted from db
-                                current_episodes_sonarr.append(episode['id'])
-                                skipped_count += 1
-                                continue
+                    if monitored_status_db is None:
+                        # not in db, might need to add, if we have a file on disk
+                        pass
+                    elif monitored_status_db != episode['monitored']:
+                        # monitored status changed and we don't know about it until now
+                        trace(f"(Monitor Status Mismatch) {episode['title']}")
+                        # pass
+                    elif not episode['monitored']:
+                        # Add unmonitored episode in sonarr to current episode list, otherwise it will be deleted from db
+                        current_episodes_sonarr.append(episode['id'])
+                        skipped_count += 1
+                        continue
 
-                        try:
-                            bazarr_file_size = \
-                                os.path.getsize(path_mappings.path_replace(episode['episodeFile']['path']))
-                        except OSError:
-                            bazarr_file_size = 0
-                        if episode['episodeFile']['size'] > MINIMUM_VIDEO_SIZE or bazarr_file_size > MINIMUM_VIDEO_SIZE:
-                            # Add episodes in sonarr to current episode list
-                            current_episodes_sonarr.append(episode['id'])
+                if (episode['episodeFile']['size'] > MINIMUM_VIDEO_SIZE or
+                        check_actual_file_size(episode['episodeFile']['path'])):
+                    # Add episodes in sonarr to current episode list
+                    current_episodes_sonarr.append(episode['id'])
 
-                            # Parse episode data
-                            if episode['id'] in current_episodes_id_db_list:
-                                parsed_episode = episodeParser(episode)
-                                if not any([parsed_episode.items() <= x for x in current_episodes_db_kv]):
-                                    episodes_to_update.append(parsed_episode)
-                            else:
-                                episodes_to_add.append(episodeParser(episode))
+                    # Parse episode data
+                    if episode['id'] in current_episodes_id_db_list:
+                        parsed_episode = episodeParser(episode)
+                        if not any([parsed_episode.items() <= x for x in current_episodes_db_kv]):
+                            episodes_to_update.append(parsed_episode)
+                    else:
+                        episodes_to_add.append(episodeParser(episode))
     else:
         return
 

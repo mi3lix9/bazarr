@@ -2,11 +2,12 @@ import { FunctionComponent } from "react";
 import TimeAgo from "react-timeago";
 import {
   Badge,
+  Button,
   Card,
   Drawer,
   Group,
   Loader,
-  Progress,
+  RingProgress,
   Stack,
   Text,
   Title,
@@ -17,12 +18,10 @@ import {
   faClock,
   faQuestion,
   faSpinner,
-  faTrash,
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useSystemJobs } from "@/apis/hooks";
-import { Action } from "@/components";
 import Jobs = System.Jobs;
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { startCase } from "lodash";
@@ -141,65 +140,110 @@ const NotificationDrawer: FunctionComponent<NotificationDrawerProps> = ({
                             return timeB - timeA; // Latest first (descending order)
                           })
                           .map((job, index) => (
-                            <Card
+                            <Stack
+                              gap="xs"
                               key={job?.job_id ?? `job-fallback-${index}`}
-                              withBorder
-                              radius="sm"
-                              padding="sm"
                             >
-                              <Group justify="space-between" wrap="nowrap">
-                                <Text truncate="end">
-                                  {status === "pending" && (
-                                    <Action
-                                      label="Cancel job"
-                                      tooltip={{
-                                        position: "left",
-                                        openDelay: 500,
-                                      }}
-                                      icon={faTrash}
-                                      size="sm"
-                                      loading={isCancelling}
-                                      onClick={() =>
-                                        job?.job_id && deleteJob(job.job_id)
-                                      }
-                                    />
-                                  )}
-                                  {job?.job_name}
-                                </Text>
-                                <Badge size="sm">
+                              <Group justify="flex-end" wrap="nowrap">
+                                <Badge
+                                  size="md"
+                                  variant="filled"
+                                  color="blue"
+                                  style={{ textTransform: "uppercase" }}
+                                >
                                   <TimeAgo
                                     date={job?.last_run_time || new Date()}
                                     minPeriod={5}
                                   />
                                 </Badge>
                               </Group>
-                              {job?.is_progress && (
-                                <>
-                                  <Progress
-                                    value={
-                                      job.progress_max > 0
-                                        ? (job.progress_value /
-                                            job.progress_max) *
-                                          100
-                                        : 0
-                                    }
-                                    size="sm"
-                                    radius="sm"
-                                  />
-                                  <Group justify="space-between" wrap="nowrap">
-                                    <Tooltip label={job.progress_message}>
-                                      <Text truncate={"end"}>
-                                        {job.progress_message}
+                              <Card
+                                withBorder
+                                radius="md"
+                                padding="sm"
+                                style={{
+                                  backgroundColor:
+                                    "var(--mantine-color-dark-6)",
+                                }}
+                              >
+                                <Stack gap="xs">
+                                  <Group
+                                    gap="md"
+                                    align="flex-start"
+                                    wrap="nowrap"
+                                  >
+                                    {job?.is_progress &&
+                                      status !== "pending" && (
+                                        <Tooltip
+                                          label={`${job.progress_value}/${job.progress_max}`}
+                                          position="right"
+                                        >
+                                          <RingProgress
+                                            size={60}
+                                            thickness={6}
+                                            sections={[
+                                              {
+                                                value:
+                                                  job.progress_max > 0
+                                                    ? (job.progress_value /
+                                                        job.progress_max) *
+                                                      100
+                                                    : 0,
+                                                color: "blue",
+                                              },
+                                            ]}
+                                            label={
+                                              <Text
+                                                ta="center"
+                                                size="xs"
+                                                fw={700}
+                                              >
+                                                {job.progress_max > 0
+                                                  ? Math.round(
+                                                      (job.progress_value /
+                                                        job.progress_max) *
+                                                        100,
+                                                    )
+                                                  : 0}
+                                                %
+                                              </Text>
+                                            }
+                                          />
+                                        </Tooltip>
+                                      )}
+                                    <Stack gap="xs" style={{ flex: 1 }}>
+                                      <Text fw={500} size="md">
+                                        {job?.job_name}
                                       </Text>
-                                    </Tooltip>
-                                    <Text>
-                                      {job.progress_value} out of{" "}
-                                      {job.progress_max}
-                                    </Text>
+                                      {job?.progress_message && (
+                                        <Text
+                                          size="sm"
+                                          c="dimmed"
+                                          lineClamp={2}
+                                        >
+                                          {job.progress_message}
+                                        </Text>
+                                      )}
+                                    </Stack>
                                   </Group>
-                                </>
-                              )}
-                            </Card>
+
+                                  {status === "pending" && (
+                                    <Group justify="flex-start">
+                                      <Button
+                                        variant="filled"
+                                        color="red"
+                                        loading={isCancelling}
+                                        onClick={() =>
+                                          job?.job_id && deleteJob(job.job_id)
+                                        }
+                                      >
+                                        Cancel Job
+                                      </Button>
+                                    </Group>
+                                  )}
+                                </Stack>
+                              </Card>
+                            </Stack>
                           ))}
                       </Stack>
                     </Stack>

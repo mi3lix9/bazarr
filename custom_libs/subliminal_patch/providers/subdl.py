@@ -3,6 +3,7 @@ import logging
 import os
 import time
 import io
+import re
 
 from zipfile import ZipFile, is_zipfile
 from urllib.parse import urljoin
@@ -26,6 +27,92 @@ retry_timeout = 5
 
 language_converters.register('subdl = subliminal_patch.converters.subdl:SubdlConverter')
 
+# Cache for absolute episode numbers from Sonarr API
+_absolute_episode_cache = {}
+
+
+def _get_absolute_episode_from_sonarr(sonarr_episode_id):
+    """Fetch absolute episode number from Sonarr API using episode ID.
+    
+    Returns None if unable to fetch or if absoluteEpisodeNumber is not available.
+    Uses caching to avoid repeated API calls.
+    """
+    if not sonarr_episode_id:
+        return None
+    
+    # Check cache first
+    if sonarr_episode_id in _absolute_episode_cache:
+        return _absolute_episode_cache[sonarr_episode_id]
+    
+    try:
+        # Try to import Sonarr utilities - only if available
+        # Use try/except for import to handle cases where bazarr modules aren't available
+        try:
+            from bazarr.sonarr.sync.utils import get_episodes_from_sonarr_api
+            from bazarr.app.config import settings
+        except ImportError:
+            logger.debug("Bazarr Sonarr utilities not available, skipping absolute episode lookup")
+            return None
+        
+        if not settings.general.use_sonarr or not settings.sonarr.apikey:
+            return None
+        
+        episode_data = get_episodes_from_sonarr_api(
+            apikey_sonarr=settings.sonarr.apikey,
+            episode_id=sonarr_episode_id
+        )
+        
+        if episode_data and isinstance(episode_data, dict):
+            absolute_episode = episode_data.get('absoluteEpisodeNumber')
+            if absolute_episode is not None:
+                _absolute_episode_cache[sonarr_episode_id] = absolute_episode
+                logger.debug(f"Fetched absolute episode number {absolute_episode} for Sonarr episode {sonarr_episode_id}")
+                return absolute_episode
+        
+    except Exception as e:
+        logger.debug(f"Error fetching absolute episode number from Sonarr: {e}")
+    
+    # Cache None to avoid repeated failed attempts
+    _absolute_episode_cache[sonarr_episode_id] = None
+    return None
+
+
+def _extract_absolute_episode_from_release(release_name):
+    """Extract absolute episode number from SubDL release name.
+    
+    SubDL release names often contain absolute episode numbers like:
+    - "[Crunchyroll] One Piece - 1148"
+    - "One Piece - 1144"
+    - "Series Name - 123"
+    
+    Returns the absolute episode number if found, None otherwise.
+    """
+    if not release_name:
+        return None
+    
+    # Pattern to match episode numbers after series name
+    # Matches patterns like "Series Name - 1148" or "[Source] Series Name - 1148"
+    # Look for a dash/hyphen followed by a 3+ digit number (typical for absolute numbering)
+    patterns = [
+        r'[-–]\s*(\d{3,})(?:\s|$|\[|\.)',  # Match " - 1148" format (most common)
+        r'\b(\d{3,})\b',  # Fallback: match any 3+ digit number
+    ]
+    
+    for pattern in patterns:
+        match = re.search(pattern, release_name)
+        if match:
+            try:
+                episode_num = int(match.group(1))
+                # Reasonable range for absolute episode numbers (1-10000)
+                # Most anime shows with absolute numbering are in this range
+                if 1 <= episode_num <= 10000:
+                    logger.debug(f"Extracted absolute episode number {episode_num} from release: {release_name}")
+                    return episode_num
+            except (ValueError, IndexError):
+                continue
+    
+    return None
+
 
 class SubdlSubtitle(Subtitle):
     provider_name = 'subdl'
@@ -33,12 +120,13 @@ class SubdlSubtitle(Subtitle):
     hearing_impaired_verifiable = True
 
     def __init__(self, language, forced, hearing_impaired, page_link, download_link, file_id, release_names, uploader,
-                 season=None, episode=None):
+                 season=None, episode=None, absolute_episode=None):
         super().__init__(language)
         language = Language.rebuild(language, hi=hearing_impaired, forced=forced)
 
         self.season = season
         self.episode = episode
+        self.absolute_episode = absolute_episode
         self.releases = release_names
         self.release_info = ', '.join(release_names)
         self.language = language
@@ -64,9 +152,29 @@ class SubdlSubtitle(Subtitle):
             # season
             if video.season == self.season:
                 matches.add('season')
-            # episode
+            # episode - check both relative and absolute episode numbers
             if video.episode == self.episode:
                 matches.add('episode')
+            
+            # Check absolute episode number match as fallback
+            if self.absolute_episode is not None:
+                # Try to get absolute episode number from video's Sonarr episode ID
+                video_absolute_episode = None
+                if hasattr(video, 'sonarrEpisodeId') and video.sonarrEpisodeId:
+                    video_absolute_episode = _get_absolute_episode_from_sonarr(video.sonarrEpisodeId)
+                
+                if video_absolute_episode is not None and video_absolute_episode == self.absolute_episode:
+                    logger.debug(f"Matched absolute episode number {self.absolute_episode} for video {video.sonarrEpisodeId} "
+                               f"(season {video.season}, episode {video.episode})")
+                    matches.add('episode')
+                    # Also add season match if we have absolute episode match (for shows like One Piece)
+                    if 'season' not in matches and video.season:
+                        logger.debug(f"Adding season match due to absolute episode match")
+                        matches.add('season')
+                elif video_absolute_episode is not None:
+                    logger.debug(f"Absolute episode mismatch: subtitle has {self.absolute_episode}, "
+                               f"video has {video_absolute_episode} (Sonarr episode {video.sonarrEpisodeId})")
+            
             # imdb
             matches.add('series_imdb_id')
         else:
@@ -193,6 +301,17 @@ class SubdlProvider(ProviderRetryMixin, Provider):
                     # ignore season packs
                     continue
                 else:
+                    # Extract absolute episode number from release names
+                    absolute_episode = None
+                    release_names = item.get('releases', [])
+                    if release_names:
+                        # Try to extract absolute episode from each release name
+                        for release_name in release_names:
+                            extracted = _extract_absolute_episode_from_release(release_name)
+                            if extracted is not None:
+                                absolute_episode = extracted
+                                break
+                    
                     subtitle = SubdlSubtitle(
                         language=Language.fromsubdl(item['language']),
                         forced=self._is_forced(item),
@@ -200,10 +319,11 @@ class SubdlProvider(ProviderRetryMixin, Provider):
                         page_link=urljoin("https://subdl.com", item.get('subtitlePage', '')),
                         download_link=item['url'],
                         file_id=item['name'],
-                        release_names=item.get('releases', []),
+                        release_names=release_names,
                         uploader=item.get('author', ''),
                         season=item.get('season', None),
                         episode=item.get('episode', None),
+                        absolute_episode=absolute_episode,
                     )
                     subtitle.get_matches(self.video)
                     if subtitle.language in languages:  # make sure only desired subtitles variants are returned

@@ -612,14 +612,19 @@ def log_request_response(response, non_standard=True):
         try:
             redacted_request_body = json.loads(response.request.body)
         except json.JSONDecodeError:
-            logger.debug(f"Response body could not be parsed as JSON: {response.request.body!r}.")
+            logger.debug(f"Request body could not be parsed as JSON: {response.request.body!r}.")
         else:
             if 'password' in redacted_request_body:
                 redacted_request_body['password'] = 'redacted'
 
-    redacted_response_body = json.loads(response.text)
-    if 'token' in redacted_response_body and isinstance(redacted_response_body['token'], str):
-        redacted_response_body['token'] = redacted_response_body['token'][:-8] + 8 * 'x'
+    redacted_response_body = None
+    try:
+        redacted_response_body = json.loads(response.text)
+    except json.JSONDecodeError:
+        logger.debug(f"Response body could not be parsed as JSON: {response.text!r}.")
+    else:
+        if 'token' in redacted_response_body and isinstance(redacted_response_body['token'], str):
+            redacted_response_body['token'] = redacted_response_body['token'][:-8] + 8 * 'x'
 
     if non_standard:
         logger.debug("opensubtitlescom returned a non standard response. Logging request/response for debugging "
@@ -628,7 +633,8 @@ def log_request_response(response, non_standard=True):
         logger.debug("opensubtitlescom returned a standard response. Logging request/response for debugging purpose.")
     logger.debug(f"Request URL: {response.request.url}")
     logger.debug(f"Request Headers: {redacted_request_headers}")
-    logger.debug(f"Request Body: {json.dumps(redacted_request_body) if redacted_request_body else None}")
+    logger.debug(f"Request Body: "
+                 f"{json.dumps(redacted_request_body) if redacted_request_body else response.request.body}")
     logger.debug(f"Response Status Code: {response.status_code}")
     logger.debug(f"Response Headers: {response.headers}")
-    logger.debug(f"Response Body: {json.dumps(redacted_response_body) if redacted_request_body else None}")
+    logger.debug(f"Response Body: {json.dumps(redacted_response_body) if redacted_response_body else response.text}")

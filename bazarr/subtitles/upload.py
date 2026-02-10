@@ -34,12 +34,12 @@ from .sync import sync_subtitles
 from .post_processing import postprocessing
 
 
-def manual_upload_subtitle(path, language, forced, hi, media_type, subtitle, audio_language, job_id=None,
+def manual_upload_subtitle(path, language, forced, hi, media_type, subtitle, filename, audio_language, job_id=None,
                            sonarrSeriesId=None, sonarrEpisodeId=None, radarrId=None):
     if not job_id:
-        return jobs_queue.add_job_from_function(f"Uploading {subtitle.filename}", is_progress=False)
+        return jobs_queue.add_job_from_function(f"Uploading {filename}", is_progress=False)
 
-    logging.debug(f'BAZARR Manually uploading subtitles: {subtitle.filename}')
+    logging.debug(f'BAZARR Manually uploading subtitles: {filename}')
 
     single = settings.general.single_language
 
@@ -100,16 +100,16 @@ def manual_upload_subtitle(path, language, forced, hi, media_type, subtitle, aud
         original_format=use_original_format
     )
 
-    sub.content = subtitle.read()
+    sub.content = subtitle.getvalue()
     if not sub.is_valid():
-        logging.exception(f'BAZARR Invalid subtitle file: {subtitle.filename}')
+        logging.exception(f'BAZARR Invalid subtitle file: {filename}')
         sub.mods = None
 
     if settings.general.utf8_encode:
         sub.set_encoding("utf-8")
 
     try:
-        sub.format = (get_format_identifier(os.path.splitext(subtitle.filename)[1]),)
+        sub.format = (get_format_identifier(os.path.splitext(filename)[1]),)
     except Exception:
         pass
 

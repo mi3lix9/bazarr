@@ -622,7 +622,7 @@ class Addic7edProvider(_Addic7edProvider):
 
         def raise_limit():
             logger.info("Addic7ed: Downloads per day exceeded (%s)", cap)
-            raise DownloadLimitPerDayExceeded
+            raise DownloadLimitExceeded("Addic7ed: Downloads per day exceeded (%s)" % cap)
 
         if type(last_dls) is not list:
             last_dls = []

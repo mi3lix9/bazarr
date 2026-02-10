@@ -5,20 +5,20 @@ import time
 import datetime
 import json
 
-from requests import Session, ConnectionError, Timeout, ReadTimeout, RequestException
+from requests import Session, ConnectionError, Timeout, ReadTimeout
 from requests.exceptions import JSONDecodeError
 from subzero.language import Language
 
 from babelfish import language_converters
 from subliminal import Episode, Movie
 from subliminal.score import get_equivalent_release_groups
-from subliminal.utils import sanitize_release_group, sanitize
+from subliminal.utils import sanitize_release_group
 from subliminal_patch.exceptions import TooManyRequests, APIThrottled
 from subliminal.exceptions import DownloadLimitExceeded, AuthenticationError, ConfigurationError, ServiceUnavailable, \
     ProviderError
 from .mixins import ProviderRetryMixin
 from subliminal_patch.subtitle import Subtitle
-from subliminal.subtitle import fix_line_ending, SUBTITLE_EXTENSIONS
+from subliminal.subtitle import fix_line_ending
 from subliminal_patch.providers import Provider
 from subliminal_patch.subtitle import guess_matches
 from subliminal_patch.utils import fix_inconsistent_naming

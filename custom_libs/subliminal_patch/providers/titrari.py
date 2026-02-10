@@ -6,6 +6,8 @@ import io
 import logging
 import re
 
+from requests import Session
+
 from zipfile import ZipFile, is_zipfile
 from rarfile import RarFile, is_rarfile
 from guessit import guessit

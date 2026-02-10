@@ -273,15 +273,20 @@ class OpenSubtitlesComProvider(ProviderRetryMixin, Provider):
 
         # loop over results
         for result in results_dict:
+            try:
+                year = int(result['attributes']['year'])
+            except ValueError:
+                year = None
+
             if 'title' in result['attributes']:
                 if isinstance(self.video, Episode):
                     if fix_tv_naming(title).lower() == result['attributes']['title'].lower() and \
-                            (not self.video.year or self.video.year == int(result['attributes']['year'])):
+                            (not self.video.year or self.video.year == year):
                         title_id = result['id']
                         break
                 else:
                     if fix_movie_naming(title).lower() == result['attributes']['title'].lower() and \
-                            (not self.video.year or self.video.year == int(result['attributes']['year'])):
+                            (not self.video.year or self.video.year == year):
                         title_id = result['id']
                         break
             else:

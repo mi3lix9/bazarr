@@ -420,7 +420,6 @@ export const ProviderList: Readonly<ProviderInfo[]> = [
     name: "Sous-Titres.eu",
     description: "Mostly French Subtitles Provider",
   },
-  { key: "subdivx", description: "LATAM Spanish / Spanish Subtitles Provider" },
   {
     key: "subdl",
     inputs: [

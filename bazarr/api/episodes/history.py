@@ -139,7 +139,7 @@ class EpisodesHistory(Resource):
 
             # Mark upgradable and get original_id
             item.update({'original_id': upgradable_episodes_not_perfect.get(item['id'])})
-            item.update({'upgradable': bool(item['original_id'])})
+            item.update({'upgradable': item['id'] in upgradable_episodes_not_perfect.keys()})
 
             # Mark not upgradable if video/subtitles file doesn't exist anymore or if language isn't desired anymore
             if item['upgradable']:

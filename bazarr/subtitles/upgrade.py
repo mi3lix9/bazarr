@@ -21,6 +21,7 @@ from subtitles.indexer.movies import store_subtitles_movie
 from subtitles.indexer.series import store_subtitles
 from utilities.path_mappings import path_mappings
 from .download import generate_subtitles
+from app.event_handler import event_stream
 
 
 def upgrade_subtitles():
@@ -148,6 +149,7 @@ def upgrade_episodes_subtitles(job_id=None):
             history_log(3, episode['sonarrSeriesId'], episode['sonarrEpisodeId'], result,
                         upgraded_from_id=episode['original_id'])
             send_notifications(episode['sonarrSeriesId'], episode['sonarrEpisodeId'], result.message)
+            event_stream(type="episode-history")
     jobs_queue.update_job_name(job_id=job_id, new_job_name='Tried to upgrade episodes subtitles')
 
 
@@ -251,6 +253,7 @@ def upgrade_movies_subtitles(job_id=None):
                                   path_mappings.path_replace_movie(movie['video_path']))
             history_log_movie(3, movie['radarrId'], result, upgraded_from_id=movie['original_id'])
             send_notifications_movie(movie['radarrId'], result.message)
+            event_stream(type="movie-history")
     jobs_queue.update_job_name(job_id=job_id, new_job_name='Tried to upgrade movies subtitles')
 
 

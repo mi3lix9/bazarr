@@ -61,8 +61,6 @@ class MoviesHistory(Resource):
         length = args.get('length')
         radarrid = args.get('radarrid')
 
-        upgradable_movies_not_perfect = get_upgradable_movies_subtitles()
-
         blacklisted_subtitles = select(TableBlacklistMovie.provider,
                                        TableBlacklistMovie.subs_id) \
             .subquery()
@@ -121,6 +119,9 @@ class MoviesHistory(Resource):
             'external_subtitles': [y[1] for y in ast.literal_eval(x.external_subtitles) if y[1]],
             'blacklisted': bool(x.blacklisted),
         } for x in database.execute(stmt).all()]
+
+        upgradable_movies_not_perfect = get_upgradable_movies_subtitles(history_id_list=[x['id'] for x in
+                                                                                         movie_history])
 
         for item in movie_history:
             # is this language still desired or should we simply skip this subtitles from upgrade logic?

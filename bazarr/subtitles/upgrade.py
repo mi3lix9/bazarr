@@ -283,7 +283,7 @@ def parse_language_string(language_string):
     return [language, is_forced, is_hi]
 
 
-def get_upgradable_episode_subtitles():
+def get_upgradable_episode_subtitles(history_id_list=None):
     if not settings.general.upgrade_subs:
         # return an empty set of rows
         logging.debug("Subtitles upgrade is disabled so we wont go further.")
@@ -325,6 +325,10 @@ def get_upgradable_episode_subtitles():
 
     upgradable_episode_subtitles = {}
     for subtitle_to_upgrade in subtitles_to_upgrade:
+        # exclude subtitles that are not in history_id_list if provided
+        if history_id_list and subtitle_to_upgrade.id not in history_id_list:
+            continue
+
         # exclude subtitles with ID that as been "upgraded from" and shouldn't be considered
         if any(x.upgradedFromId == subtitle_to_upgrade.id for x in subtitles_to_upgrade):
             logging.debug(f"TableHistory ID {subtitle_to_upgrade.id} is the original subtitles event and has already "
@@ -346,7 +350,7 @@ def get_upgradable_episode_subtitles():
     return upgradable_episode_subtitles
 
 
-def get_upgradable_movies_subtitles():
+def get_upgradable_movies_subtitles(history_id_list=None):
     if not settings.general.upgrade_subs:
         # return an empty set of rows
         logging.debug("Subtitles upgrade is disabled so we won't go further.")
@@ -387,6 +391,10 @@ def get_upgradable_movies_subtitles():
 
     upgradable_movie_subtitles = {}
     for subtitle_to_upgrade in subtitles_to_upgrade:
+        # exclude subtitles that are not in history_id_list if provided
+        if history_id_list and subtitle_to_upgrade.id not in history_id_list:
+            continue
+
         # exclude subtitles with ID that as been "upgraded from" and shouldn't be considered
         if any(x.upgradedFromId == subtitle_to_upgrade.id for x in subtitles_to_upgrade):
             logging.debug(f"TableHistoryMovie ID {subtitle_to_upgrade.id} is the original subtitles event and has "

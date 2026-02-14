@@ -48,7 +48,7 @@ class SubdlSubtitle(Subtitle):
         self.page_link = page_link
         self.download_link = download_link
         self.uploader = uploader
-        self.matches = None
+        self.matches = set()
 
     @property
     def id(self):

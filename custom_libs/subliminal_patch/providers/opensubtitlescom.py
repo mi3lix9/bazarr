@@ -96,7 +96,7 @@ class OpenSubtitlesComSubtitle(Subtitle):
         self.page_link = page_link
         self.download_link = None
         self.uploader = uploader
-        self.matches = None
+        self.matches = set()
         self.hash = file_hash
         self.encoding = 'utf-8'
         self.hash_matched = hash_matched
@@ -107,34 +107,33 @@ class OpenSubtitlesComSubtitle(Subtitle):
         return self.file_id
 
     def get_matches(self, video):
-        matches = set()
         type_ = "movie" if isinstance(video, Movie) else "episode"
 
         # handle movies and series separately
         if type_ == "episode":
             # series
-            matches.add('series')
+            self.matches.add('series')
             # season
             if video.season == self.season:
-                matches.add('season')
+                self.matches.add('season')
             # episode
             if video.episode == self.episode:
-                matches.add('episode')
+                self.matches.add('episode')
             # imdb
             if self.imdb_match:
-                matches.add('series_imdb_id')
+                self.matches.add('series_imdb_id')
         else:
             # title
-            matches.add('title')
+            self.matches.add('title')
             # imdb
             if self.imdb_match:
-                matches.add('imdb_id')
+                self.matches.add('imdb_id')
 
         # rest is same for both groups
 
         # year
         if video.year == self.year:
-            matches.add('year')
+            self.matches.add('year')
 
         # release_group
         if video.release_group and self.releases:
@@ -142,17 +141,15 @@ class OpenSubtitlesComSubtitle(Subtitle):
             guessed_subtitles_release = guessit(self.releases, options={'type': type_})
             subtitles_release = get_equivalent_release_groups(sanitize_release_group(guessed_subtitles_release.get('release_group', '')))
             if subtitles_release == video_release:
-                matches.add('release_group')
+                self.matches.add('release_group')
 
         if self.hash_matched:
-            matches.add('hash')
+            self.matches.add('hash')
 
         # other properties
-        matches |= guess_matches(video, guessit(self.releases, {"type": type_}))
+        self.matches |= guess_matches(video, guessit(self.releases, {"type": type_}))
 
-        self.matches = matches
-
-        return matches
+        return self.matches
 
 
 class OpenSubtitlesComProvider(ProviderRetryMixin, Provider):

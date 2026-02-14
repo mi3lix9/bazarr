@@ -46,6 +46,7 @@ class LegendasdivxSubtitle(Subtitle):
         self.wrong_fps = False
         self.skip_wrong_fps = skip_wrong_fps
         self.release_info = self.description
+        self.matches = set()
 
     @property
     def id(self):

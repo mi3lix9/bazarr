@@ -276,6 +276,7 @@ class WhisperAISubtitle(Subtitle):
         self.task = None
         self.audio_language = None
         self.force_audio_stream = None
+        self.matches = set()
 
     @property
     def id(self):

@@ -56,7 +56,7 @@ class SubtitrarinoiSubtitle(Subtitle):
         self.year = year
         self.download_count = download_count
         self.comments = self.releases = self.release_info = ",".join(comments.split(";"))
-        self.matches = None
+        self.matches = set()
         self.uploader = uploader
         self.page_link = page_link
         self.is_episode = is_episode

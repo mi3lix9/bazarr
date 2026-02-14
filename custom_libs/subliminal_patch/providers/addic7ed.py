@@ -45,7 +45,7 @@ class Addic7edSubtitle(_Addic7edSubtitle):
         # Guessit will fail if the input is None
         self.release_info = version.replace('+', ',') if version else ""
         self.uploader = uploader
-        self.matches = None
+        self.matches = set()
 
     def get_matches(self, video):
         self.matches = super(Addic7edSubtitle, self).get_matches(video)

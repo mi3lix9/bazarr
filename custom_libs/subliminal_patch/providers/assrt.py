@@ -76,6 +76,7 @@ class AssrtSubtitle(Subtitle):
         self.release_info = video_name
         self.url = None
         self._detail = None
+        self.matches = set()
 
     def _get_detail(self):
         if self._detail:

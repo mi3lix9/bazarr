@@ -73,8 +73,8 @@ const SettingsGeneralView: FunctionComponent = () => {
         <Message>Have a custom instance name as browser's tab title</Message>
         <Text label="Hostname" settingKey="settings-general-hostname"></Text>
         <Message>
-          Hostname to access Bazarr (ie: bazarr.mydomain.local). Required for
-          webhook security.
+          Hostname or IP address to access Bazarr (ie: bazarr.mydomain.local or
+          192.168.0.100). Required for webhook security.
         </Message>
       </Section>
       <Section header="Media">

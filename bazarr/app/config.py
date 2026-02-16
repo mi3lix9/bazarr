@@ -12,6 +12,7 @@ from datetime import datetime
 
 import configparser
 import yaml
+import platform
 
 from urllib.parse import quote_plus
 from utilities.binaries import BinaryNotFound, get_binary
@@ -85,6 +86,7 @@ validators = [
               is_type_of=str),
     Validator('general.ip', must_exist=True, default='*', is_type_of=str, condition=validate_ip_address),
     Validator('general.port', must_exist=True, default=6767, is_type_of=int, gte=1, lte=65535),
+    Validator('general.hostname', must_exist=True, default=platform.node(), is_type_of=str),
     Validator('general.base_url', must_exist=True, default='', is_type_of=str),
     Validator('general.instance_name', must_exist=True, default='Bazarr', is_type_of=str,
               apply_default_on_none=True),

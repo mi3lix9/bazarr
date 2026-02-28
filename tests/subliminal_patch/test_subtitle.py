@@ -27,3 +27,12 @@ def test_guess_matches_w_edition_both_empty(movies):
     movie.edition = None
     matches = subtitle.guess_matches(movie, {})
     assert "edition" in matches
+
+
+def test_guess_matches_episode_absolute_numbering(episodes):
+    episode = episodes["got_s03e10"]
+    episode.absolute_episode = 999
+
+    matches = subtitle.guess_matches(episode, {"episode": 999})
+
+    assert "episode" in matches

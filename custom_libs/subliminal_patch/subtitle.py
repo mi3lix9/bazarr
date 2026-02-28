@@ -543,6 +543,24 @@ def guess_matches(video, guess, partial=False):
                 video, "absolute_episode"
             ):
                 matches.add("episode")
+            elif getattr(video, "absolute_episode", None):
+                absolute_episode = getattr(video, "absolute_episode")
+                guess_season = guess.get("season")
+                try:
+                    guess_season_int = int(guess_season)
+                    episode_int = int(episode)
+                    absolute_as_joined = int(f"{guess_season_int}{episode_int}")
+                    absolute_as_padded = int(f"{guess_season_int}{episode_int:02d}")
+                    if absolute_episode in (absolute_as_joined, absolute_as_padded):
+                        logger.debug(
+                            "Recovered absolute episode match from parsed season/episode (%s, %s -> %s)",
+                            guess_season_int,
+                            episode_int,
+                            absolute_episode,
+                        )
+                        matches.add("episode")
+                except (TypeError, ValueError):
+                    pass
 
         # year
         if video.year and "year" in guess and guess["year"] == video.year:

@@ -28,6 +28,14 @@ logger = logging.getLogger(__name__)
 retry_amount = 3
 retry_timeout = 5
 
+
+def _to_int(value):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
 language_converters.register("subdl = subliminal_patch.converters.subdl:SubdlConverter")
 
 
@@ -52,8 +60,8 @@ class SubdlSubtitle(Subtitle):
         super().__init__(language)
         language = Language.rebuild(language, hi=hearing_impaired, forced=forced)
 
-        self.season = season
-        self.episode = episode
+        self.season = _to_int(season)
+        self.episode = _to_int(episode)
         self.releases = release_names
         self.release_info = ", ".join(release_names)
         self.language = language

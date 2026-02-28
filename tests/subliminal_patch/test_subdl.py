@@ -76,3 +76,44 @@ def test_get_matches_episode_absolute_numbering(episodes):
     matches = subtitle.get_matches(video)
 
     assert {"series", "season", "episode"}.issubset(matches)
+
+
+def test_get_matches_episode_absolute_numbering_with_ambiguous_release(episodes):
+    video = episodes["got_s03e10"]
+    video.absolute_episode = 1153
+    subtitle = SubdlSubtitle(
+        language=Language("ara"),
+        forced=False,
+        hearing_impaired=False,
+        page_link="https://subdl.com/s/info/test",
+        download_link="/subtitle/test.zip",
+        file_id="SUBDL::test-episode-absolute-ambiguous",
+        release_names=["One Piece - 1153"],
+        uploader="tester",
+        season=3,
+        episode=None,
+    )
+
+    matches = subtitle.get_matches(video)
+
+    assert {"series", "season", "episode"}.issubset(matches)
+
+
+def test_get_matches_episode_with_string_season_and_episode(episodes):
+    video = episodes["got_s03e10"]
+    subtitle = SubdlSubtitle(
+        language=Language("ara"),
+        forced=False,
+        hearing_impaired=False,
+        page_link="https://subdl.com/s/info/test",
+        download_link="/subtitle/test.zip",
+        file_id="SUBDL::test-episode-string-values",
+        release_names=["Game of Thrones - S03E10"],
+        uploader="tester",
+        season="3",
+        episode="10",
+    )
+
+    matches = subtitle.get_matches(video)
+
+    assert {"series", "season", "episode"}.issubset(matches)
